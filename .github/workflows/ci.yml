@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  docs-check:
+    name: Docs Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify README.md exists
+        run: |
+          if [ ! -f README.md ]; then
+            echo "ERROR: README.md not found"
+            exit 1
+          fi
+          echo "README.md found ($(wc -l < README.md) lines)"
+
+      - name: List study note directories
+        run: |
+          echo "Study note directories:"
+          ls -d */ 2>/dev/null | head -20 || echo "No subdirectories found"
+
+      - name: Check for accidental secret-like patterns
+        run: |
+          echo "Scanning for accidental secret patterns..."
+          if grep -rE "(api_key|secret_key|private_key|password|token)\s*=\s*['"][^'"]{8,}" .             --include="*.md" --include="*.txt" --include="*.json"             --exclude-dir=".git" 2>/dev/null | grep -v "YOUR_" | grep -v "example" | grep -v "placeholder"; then
+            echo "WARNING: Possible secret-like patterns found above. Review before merging."
+          else
+            echo "No secret-like patterns detected."
+          fi
