@@ -17,22 +17,20 @@ jobs:
 
       - name: Verify README.md exists
         run: |
-          if [ ! -f README.md ]; then
-            echo "ERROR: README.md not found"
-            exit 1
-          fi
-          echo "README.md found ($(wc -l < README.md) lines)"
+          test -f README.md && echo "README.md found ($(wc -l < README.md) lines)" || (echo "ERROR: README.md not found" && exit 1)
 
       - name: List study note directories
         run: |
           echo "Study note directories:"
-          ls -d */ 2>/dev/null | head -20 || echo "No subdirectories found"
+          find . -maxdepth 1 -type d ! -name ".*" | sort | tail -n +2
 
       - name: Check for accidental secret-like patterns
         run: |
           echo "Scanning for accidental secret patterns..."
-          if grep -rE "(api_key|secret_key|private_key|password|token)\s*=\s*['"][^'"]{8,}" .             --include="*.md" --include="*.txt" --include="*.json"             --exclude-dir=".git" 2>/dev/null | grep -v "YOUR_" | grep -v "example" | grep -v "placeholder"; then
-            echo "WARNING: Possible secret-like patterns found above. Review before merging."
+          found=$(grep -rn --include="*.md" --include="*.json" --include="*.html" --include="*.js"             -E "^[A-Za-z_]+(api_key|secret|password|token|private_key)[A-Za-z_]*\s*=\s*.{{8,}}" .             --exclude-dir=".git" 2>/dev/null || true)
+          if [ -n "$found" ]; then
+            echo "WARNING: Review these lines for possible secrets:"
+            echo "$found"
           else
-            echo "No secret-like patterns detected."
+            echo "No obvious secret-like patterns detected."
           fi
